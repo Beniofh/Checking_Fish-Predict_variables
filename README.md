@@ -8,5 +8,5 @@ It is composed of the following directories:
 
 To use the codes in the `src` folder, you need to download the `data` folder and place it at the root of your local folder of this repository: [https://seafile.lirmm.fr/d/feee51417e9049d99261/](https://seafile.lirmm.fr/d/feee51417e9049d99261/)
 
-This `src` folder will not be pushed with git thanks to `.gitignore`.
+This `data` folder will not be pushed with git thanks to `.gitignore`.
 
