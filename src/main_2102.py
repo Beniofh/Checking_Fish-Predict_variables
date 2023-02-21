@@ -76,9 +76,10 @@ for k in (1, 5, 10):
                                 labels=range(205))
     print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
 # %% Macro average top-K accuracy weights computation
-weights = df.groupby('labels').count()[['id']].apply(lambda a: 1/a).reset_index()
+dfw = df[df.subset == 'val']
+weights = dfw.groupby('labels').count()[['id']].apply(lambda a: 1/a).reset_index()
 weights.columns = ['labels', 'weight']
-df = df.join(weights, how='left', on='labels', rsuffix='_')
+dfw = dfw.join(weights, how='left', on='labels', rsuffix='_')
 
 # %% compute weighted top-K
 for k in (1, 5, 10):
@@ -86,6 +87,6 @@ for k in (1, 5, 10):
                                 rf.predict_proba(X_val),
                                 k=k,
                                 labels=range(205),
-                                sample_weight=df[df.subset=='val'].weight)
+                                sample_weight=dfw.weight)
     print(f'(Macro avg) Top-{k} accuracy : {topk} (prior : {k/df.labels.nunique()})')
 # %%
