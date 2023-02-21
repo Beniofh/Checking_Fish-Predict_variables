@@ -1,7 +1,9 @@
 # %% import libraries
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import top_k_accuracy_score
 
 # %% loading dataframe
 df = pd.read_csv('../data/dataset.csv', sep=',', low_memory=False)
@@ -15,7 +17,13 @@ quantitative_col = [
     'chlorophyll_concentration_1km_band_0_mean_15x15',
     'chlorophyll_concentration_1km_band_0_sd',
     'salinity_4.2km_mean_year_band_0_mean_7x7',
-    'salinity_4.2km_mean_year_band_0_sd'
+    'salinity_4.2km_mean_year_band_0_sd',
+    'chlorophyll_concentration_1km_band_0_mean_15x15',
+    'chlorophyll_concentration_1km_band_0_sd',
+    'salinity_4.2km_mean_year_band_0_mean_7x7',
+    'salinity_4.2km_mean_year_band_0_sd',
+    'salinity_4.2km_mean_month_band_15_mean_3x3',
+    'salinity_4.2km_mean_month_band_15_sd'
     ]
 
 qualitative_col = [
@@ -50,7 +58,16 @@ y_train = y[df.subset=='train']
 X_val = X[df.subset=='val']
 y_val = y[df.subset=='val']
 # %% test random forest
-rf = RandomForestClassifier()
+rf = RandomForestClassifier(max_depth=10)
 rf.fit(X_train, y_train)
-rf.score(X_val, y_val)
+print(f'Top-1 accuracy : {rf.score(X_val, y_val)}')
+
+# %% top-k accuracy
+n = 7000
+k = 10
+top10 = top_k_accuracy_score(y_val,
+                             rf.predict_proba(X_val),
+                             k=k,
+                             labels=range(205))
+print(f'Top-10 accuracy : {top10}')
 # %%
