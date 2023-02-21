@@ -1,3 +1,8 @@
+"""
+Train a random forest to obtain a baseline 
+top-k Macro and micro average.
+The model is a random forest.
+"""
 # %% import libraries
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
@@ -49,7 +54,7 @@ onehot = pd.DataFrame(X_qual.todense())
 onehot.columns = [f'eco_{i}' for i in onehot.columns]
 df = pd.concat([df, onehot], axis=1)
 
-# %%
+# %% prepare dataset to train model
 X = df[quantitative_col+onehot.columns.tolist()]
 y = df.labels
 X_train = X[df.subset=='train']
@@ -62,11 +67,25 @@ rf.fit(X_train, y_train)
 print(f'Top-1 accuracy : {rf.score(X_val, y_val)}')
 
 # %% top-k accuracy
-n = 7000
-k = 10
-top10 = top_k_accuracy_score(y_val,
-                             rf.predict_proba(X_val),
-                             k=k,
-                             labels=range(205))
-print(f'Top-10 accuracy : {top10}')
+prior = df.groupby('labels')[['id']].count().sort_values('id', ascending=False)
+prior.loc[:, 'id'] /= prior['id'].sum()
+for k in (1, 5, 10):
+    topk = top_k_accuracy_score(y_val,
+                                rf.predict_proba(X_val),
+                                k=k,
+                                labels=range(205))
+    print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
+# %% Macro average top-K accuracy weights computation
+weights = df.groupby('labels').count()[['id']].apply(lambda a: 1/a).reset_index()
+weights.columns = ['labels', 'weight']
+df = df.join(weights, how='left', on='labels', rsuffix='_')
+
+# %% compute weighted top-K
+for k in (1, 5, 10):
+    topk = top_k_accuracy_score(y_val,
+                                rf.predict_proba(X_val),
+                                k=k,
+                                labels=range(205),
+                                sample_weight=df[df.subset=='val'].weight)
+    print(f'(Macro avg) Top-{k} accuracy : {topk} (prior : {k/df.labels.nunique()})')
 # %%
