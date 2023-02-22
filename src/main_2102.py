@@ -11,7 +11,7 @@ from sklearn.metrics import top_k_accuracy_score
 
 # %% loading dataframe
 df = pd.read_csv('../data/dataset.csv', sep=',', low_memory=False)
-# %% selecting feature
+# %% Feature selection. The features that will be used by the model
 quantitative_col = [
     'bathymetry_band_0_mean_9x9',
     'bathymetry_band_0_sd',
@@ -36,16 +36,23 @@ for col in quantitative_col:
     df = df[df[col] != 'occurence_out_time']
 df.reset_index(inplace=True)
 
-# %% processing labels
+# %% processing labels.
+# The labels will be consecutive numbers between 0 and the number of species
 le = LabelEncoder()
 le.fit(df.species.unique())
 df['labels'] = le.transform(df.species).astype(int)
 
 # %% Processing NaN on selected features
+# This step can be enhanced. Here NaN are replace by the average
+# of the column values that are not NaN
+
 for col in quantitative_col:
     df.loc[df[col].isna(), col] = df[~df[col].isna()][col].astype(float).mean()
 
 # %% processing qualitive columns
+# the qualitative variables will be replaced by a vector 
+# which size is the number of modality.. All dimension will be set
+# at 0 except the one corresponding to the actual current eco region
 ohe = OneHotEncoder()
 ohe.fit(df[['ecoregion']])
 X_qual = ohe.transform(df[['ecoregion']])
@@ -54,6 +61,8 @@ onehot.columns = [f'eco_{i}' for i in onehot.columns]
 df = pd.concat([df, onehot], axis=1)
 
 # %% prepare dataset to train model
+# the column subset contains values train, val and test
+# we will test the model on train and val.
 X = df[quantitative_col+onehot.columns.tolist()]
 y = df.labels
 X_train = X[df.subset=='train']
@@ -75,10 +84,14 @@ for k in (1, 5, 10):
                                 labels=range(205))
     print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
 # %% Macro average top-K accuracy weights computation
+# each species must contribute with the same overall weight in macro average.
+# we compute the number of occurence by species. The weight of a species is
+# 1/number_of_occurences. This if one species has 10 occurrences each, successfully
+# predicted by the model, the accuracy contribution will be 10/10/205=1/205.
 dfw = df[df.subset == 'val']
 weights = dfw.groupby('labels').count()[['id']].apply(lambda a: 1/a)
-weights.columns = ['labels', 'weight']
-dfw = dfw.join(weights, how='left', on='labels')[['labels', 'labels_', 'weight']]
+weights.columns = ['weight']
+dfw = dfw.join(weights, how='left', on='labels')
 
 # %% compute weighted top-K
 for k in (1, 5, 10):
