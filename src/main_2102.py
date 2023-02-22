@@ -89,7 +89,9 @@ for k in (1, 5, 10):
 # 1/number_of_occurences. This if one species has 10 occurrences each, successfully
 # predicted by the model, the accuracy contribution will be 10/10/205=1/205.
 dfw = df[df.subset == 'val']
-weights = dfw.groupby('labels').count()[['id']].apply(lambda a: 1/a)
+weights = dfw.groupby('labels')\
+             .count()[['id']]\
+             .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1, inplace=True)
 weights.columns = ['weight']
 dfw = dfw.join(weights, how='left', on='labels')
 
