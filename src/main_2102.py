@@ -11,9 +11,6 @@ from sklearn.metrics import top_k_accuracy_score
 
 # %% loading dataframe
 df = pd.read_csv('../data/dataset.csv', sep=',', low_memory=False)
-
-
-
 # %% selecting feature
 quantitative_col = [
     'bathymetry_band_0_mean_9x9',
@@ -27,7 +24,9 @@ quantitative_col = [
     'salinity_4.2km_mean_year_band_0_mean_7x7',
     'salinity_4.2km_mean_year_band_0_sd',
     'salinity_4.2km_mean_month_band_15_mean_3x3',
-    'salinity_4.2km_mean_month_band_15_sd'
+    'salinity_4.2km_mean_month_band_15_sd',
+    'salinity_4.2km_mean_month_band_7_mean_7x7',
+    'salinity_4.2km_mean_month_band_7_sd'
     ]
 
 qualitative_col = [
@@ -77,9 +76,9 @@ for k in (1, 5, 10):
     print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
 # %% Macro average top-K accuracy weights computation
 dfw = df[df.subset == 'val']
-weights = dfw.groupby('labels').count()[['id']].apply(lambda a: 1/a).reset_index()
+weights = dfw.groupby('labels').count()[['id']].apply(lambda a: 1/a)
 weights.columns = ['labels', 'weight']
-dfw = dfw.join(weights, how='left', on='labels', rsuffix='_')
+dfw = dfw.join(weights, how='left', on='labels')[['labels', 'labels_', 'weight']]
 
 # %% compute weighted top-K
 for k in (1, 5, 10):
