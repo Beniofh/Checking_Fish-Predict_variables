@@ -91,7 +91,7 @@ for k in (1, 5, 10):
 dfw = df[df.subset == 'val']
 weights = dfw.groupby('labels')\
              .count()[['id']]\
-             .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1, inplace=True)
+             .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1)
 weights.columns = ['weight']
 dfw = dfw.join(weights, how='left', on='labels')
 
