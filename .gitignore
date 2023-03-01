@@ -162,3 +162,5 @@ cython_debug/
 # Ignorer le dossier data
 /data
 
+# lock ODS
+.*lock*
