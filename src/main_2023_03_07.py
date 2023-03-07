@@ -6,13 +6,23 @@ The model is a random forest.
 # %% import libraries
 import os
 import pandas as pd
+from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import top_k_accuracy_score
 from sklearn.inspection import permutation_importance
 
 # %% loading dataframe
-df = pd.read_csv('../data/Fish-refined_subset_value.csv', sep=',', low_memory=False)
+# récupération du datafarme avec toutes les variables écologiques pour TOUTES les occurences
+df_value = pd.read_csv('../data/Fish-refined_subset_value.csv', sep=',', low_memory=False)
+# récupération du datafarme avec uniquement les occurences valides ET les bons subsets (train, val, test)
+df_clean = pd.read_csv('../data/Fish-refined_clean_subset.csv', sep=',', low_memory=False)
+# création d'un datafarme avec toutes les variables qui ne conserve (1) que les occurences valides et (2) qui à les bons subsets (train, val, test)
+df = df_value[df_value.id.isin(df_clean.id)]
+df = df.drop(['subset'], axis=1)
+df = pd.merge(df, df_clean.loc[:, ['id', 'subset']], on='id')
+
+
 # %% Feature selection. The features that will be used by the model
 quantitative_col = [
     'bathymetry_band_0_mean_9x9',
@@ -34,16 +44,13 @@ quantitative_col = [
 qualitative_col = [
     'ecoregion'
 ]
-for col in quantitative_col:
-    df = df[df[col] != 'occurence_out_time']
-df.reset_index(inplace=True)
 
 # %% processing labels.
 # The labels will be consecutive numbers between 0 and the number of species
 le = LabelEncoder()
 le.fit(df.species.unique())
 df['labels'] = le.transform(df.species).astype(int)
-
+n_lable=len(df['labels'].unique())
 # %% Processing NaN on selected features
 # This step can be enhanced. Here NaN are replace by the average
 # of the column values that are not NaN
@@ -74,16 +81,18 @@ y_val = y[df.subset=='val']
 # %% test random forest
 rf = RandomForestClassifier(max_depth=10)
 rf.fit(X_train, y_train)
-print(f'Top-1 accuracy : {rf.score(X_val, y_val)}')
+#print(f'Top-1 accuracy : {rf.score(X_val, y_val)}')
 
-# %% top-k accuracy
+# %% top-k accuracy validation set
 prior = df.groupby('labels')[['id']].count().sort_values('id', ascending=False)
 prior.loc[:, 'id'] /= prior['id'].sum()
-for k in (1, 5, 10):
+print('')
+print('For validation set :')
+for k in (1, 5, 10, 20, 30):
     topk = top_k_accuracy_score(y_val,
                                 rf.predict_proba(X_val),
                                 k=k,
-                                labels=range(205))
+                                labels=range(n_lable))
     print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
 # %% Macro average top-K accuracy weights computation
 # each species must contribute with the same overall weight in macro average.
@@ -97,14 +106,45 @@ weights = dfw.groupby('labels')\
 weights.columns = ['weight']
 dfw = dfw.join(weights, how='left', on='labels')
 
-# %% compute weighted top-K
-for k in (1, 5, 10):
+# %% compute weighted top-K validation set
+for k in (1, 5, 10, 20, 30):
     topk = top_k_accuracy_score(y_val,
                                 rf.predict_proba(X_val),
                                 k=k,
-                                labels=range(205),
+                                labels=range(n_lable),
                                 sample_weight=dfw.weight)
     print(f'(Macro avg) Top-{k} accuracy : {topk} (prior : {k/df.labels.nunique()})')
+
+# %% top-k accuracy train set
+print('')
+print('For tain set :')
+for k in (1, 5, 10, 20, 30):
+    topk = top_k_accuracy_score(y_train,
+                                rf.predict_proba(X_train),
+                                k=k,
+                                labels=range(n_lable))
+    print(f'(Micro avg) Top-{k} accuracy : {topk} (prior : {prior.iloc[:k]["id"].sum()})')
+# %% Macro average top-K accuracy weights computation
+# each species must contribute with the same overall weight in macro average.
+# we compute the number of occurence by species. The weight of a species is
+# 1/number_of_occurences. This if one species has 10 occurrences each, successfully
+# predicted by the model, the accuracy contribution will be 10/10/205=1/205.
+dfw = df[df.subset == 'train']
+weights = dfw.groupby('labels')\
+             .count()[['id']]\
+             .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1)
+weights.columns = ['weight']
+dfw = dfw.join(weights, how='left', on='labels')
+
+# %% compute weighted top-K train set
+for k in (1, 5, 10, 20, 30):
+    topk = top_k_accuracy_score(y_train,
+                                rf.predict_proba(X_train),
+                                k=k,
+                                labels=range(n_lable),
+                                sample_weight=dfw.weight)
+    print(f'(Macro avg) Top-{k} accuracy : {topk} (prior : {k/df.labels.nunique()})')
+
 
 # %% compute Mean Decrease in Impurity graph
 if not os.path.exists('../out'):
