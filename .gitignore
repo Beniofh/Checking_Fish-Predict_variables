@@ -169,3 +169,4 @@ cython_debug/
 .*lock*
 
 .DS_Store
+.vscode

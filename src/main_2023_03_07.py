@@ -123,7 +123,7 @@ for k in (1, 5, 10, 20, 30):
 
 # %% top-k accuracy train set
 print('')
-print('For tain set :')
+print('For train set :')
 for k in (1, 5, 10, 20, 30):
     topk = top_k_accuracy_score(y_train,
                                 rf.predict_proba(X_train),
@@ -136,7 +136,8 @@ for k in (1, 5, 10, 20, 30):
 # 1/number_of_occurences. This if one species has 10 occurrences each, successfully
 # predicted by the model, the accuracy contribution will be 10/10/205=1/205.
 dfw = df[df.subset == 'train']
-weights = dfw.groupby('labels')\
+weights = dfw.reset_index()\
+             .groupby('labels')\
              .count()[['id']]\
              .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1)
 weights.columns = ['weight']
