@@ -10,4 +10,4 @@ To use the codes in the `src` folder, you need to download the `data` folder and
 
 This `data` folder will not be pushed with git thanks to `.gitignore`.
 
-Finaly, some scripts can create an 'output' folder at the root. This `output` folder will not be pushed with git thanks to `.gitignore`.
+Finally, some scripts can create an 'output' folder at the root. This `output` folder will not be pushed with git thanks to `.gitignore`.

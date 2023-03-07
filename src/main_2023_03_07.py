@@ -6,7 +6,7 @@ The model is a random forest.
 # %% import libraries
 import os
 import pandas as pd
-from tqdm import tqdm
+# from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import top_k_accuracy_score
@@ -14,15 +14,16 @@ from sklearn.inspection import permutation_importance
 
 # %% loading dataframe
 # récupération du datafarme avec toutes les variables écologiques pour TOUTES les occurences
-df_value = pd.read_csv('../data/Fish-refined_subset_value.csv', sep=',', low_memory=False)
-# récupération du datafarme avec uniquement les occurences valides ET les bons subsets (train, val, test)
-df_clean = pd.read_csv('../data/Fish-refined_clean_subset.csv', sep=',', low_memory=False)
-# création d'un datafarme avec toutes les variables qui ne conserve (1) que les occurences valides et (2) qui à les bons subsets (train, val, test)
-df = df_value[df_value.id.isin(df_clean.id)]
-df = df.drop(['subset'], axis=1)
-df = pd.merge(df, df_clean.loc[:, ['id', 'subset']], on='id')
-
-
+df_value = pd.read_csv('../data/Fish-refined_subset_value.csv', sep=',', low_memory=False)\
+             .set_index('id')\
+             .drop('subset', axis=1)
+# récupération du datafarme avec uniquement les occurences valides ET
+# les bons subsets (train, val, test)
+df_clean = pd.read_csv('../data/Fish-refined_clean_subset.csv', sep=',', low_memory=False)\
+             .set_index('id')
+# création d'un datafarme avec toutes les variables qui ne conserve (1)
+# que les occurences valides et (2) qui à les bons subsets (train, val, test)
+df = df_clean[['subset']].join(df_value, how='left')
 # %% Feature selection. The features that will be used by the model
 quantitative_col = [
     'bathymetry_band_0_mean_9x9',
@@ -59,7 +60,7 @@ for col in quantitative_col:
     df.loc[df[col].isna(), col] = df[~df[col].isna()][col].astype(float).mean()
 
 # %% processing qualitive columns
-# the qualitative variables will be replaced by a vector 
+# the qualitative variables will be replaced by a vector
 # which size is the number of modality.. All dimension will be set
 # at 0 except the one corresponding to the actual current eco region
 ohe = OneHotEncoder()
@@ -67,6 +68,7 @@ ohe.fit(df[['ecoregion']])
 X_qual = ohe.transform(df[['ecoregion']])
 onehot = pd.DataFrame(X_qual.todense())
 onehot.columns = [f'eco_{i}' for i in onehot.columns]
+onehot.index = df.index
 df = pd.concat([df, onehot], axis=1)
 
 # %% prepare dataset to train model
@@ -84,7 +86,10 @@ rf.fit(X_train, y_train)
 #print(f'Top-1 accuracy : {rf.score(X_val, y_val)}')
 
 # %% top-k accuracy validation set
-prior = df.groupby('labels')[['id']].count().sort_values('id', ascending=False)
+prior = df.reset_index()\
+          .groupby('labels')[['id']]\
+          .count()\
+          .sort_values('id', ascending=False)
 prior.loc[:, 'id'] /= prior['id'].sum()
 print('')
 print('For validation set :')
@@ -100,7 +105,8 @@ for k in (1, 5, 10, 20, 30):
 # 1/number_of_occurences. This if one species has 10 occurrences each, successfully
 # predicted by the model, the accuracy contribution will be 10/10/205=1/205.
 dfw = df[df.subset == 'val']
-weights = dfw.groupby('labels')\
+weights = dfw.reset_index()\
+             .groupby('labels')\
              .count()[['id']]\
              .apply(lambda a: 1/a).rename({'id': 'weight'}, axis=1)
 weights.columns = ['weight']
@@ -149,7 +155,7 @@ for k in (1, 5, 10, 20, 30):
 # %% compute Mean Decrease in Impurity graph
 if not os.path.exists('../out'):
     os.makedirs('../out')
-    
+
 mdi_importances = pd.Series(
     rf.feature_importances_,
     index=rf.feature_names_in_
