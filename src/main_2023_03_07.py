@@ -14,12 +14,12 @@ from sklearn.inspection import permutation_importance
 
 # %% loading dataframe
 # récupération du datafarme avec toutes les variables écologiques pour TOUTES les occurences
-df_value = pd.read_csv('data/Fish-refined_subset_value.csv', sep=',', low_memory=False)\
+df_value = pd.read_csv('../data/Fish-refined_subset_value.csv', sep=',', low_memory=False)\
              .set_index('id')\
              .drop('subset', axis=1)
 # récupération du datafarme avec uniquement les occurences valides ET
 # les bons subsets (train, val, test)
-df_clean = pd.read_csv('data/Fish-refined_clean_subset.csv', sep=',', low_memory=False)\
+df_clean = pd.read_csv('../data/Fish-refined_clean_subset.csv', sep=',', low_memory=False)\
              .set_index('id')
 # création d'un datafarme avec toutes les variables qui ne conserve (1)
 # que les occurences valides et (2) qui à les bons subsets (train, val, test)
@@ -28,6 +28,8 @@ df = df_clean[['subset']].join(df_value, how='left')
 quantitative_col = [
     'bathymetry_band_0_mean_9x9',
     'bathymetry_band_0_sd',
+    'bathy_95m_band_0_mean_15x15',
+    'bathy_95m_band_0_sd',
     'chlorophyll_concentration_1km_band_0_mean_15x15',
     'chlorophyll_concentration_1km_band_0_sd',
     'salinity_4.2km_mean_year_band_0_mean_7x7',
