@@ -11,14 +11,15 @@ y_pred = torch.Tensor(
 )
 # %% test macro average accuracy
 # accuracy counts as 0 missing classes
-acc = Accuracy(task='multiclass', top_k=2, average='macro', num_classes=y_pred.size(1))
-print(f'Accuracy: {acc(y_pred, y)}')
+acc_obj = Accuracy(task='multiclass', top_k=2, average='macro', num_classes=y_pred.size(1))
+print(f'Accuracy: {acc_obj(y_pred, y)}')
 
 def acc(a, b):
     return accuracy(a, b,
                     num_classes=y_pred.size(1),
                     top_k=2,
-                    average='macro')
+                    average='macro',
+                    task='multiclass')
 
 print(f'functional.accuracy: {acc(y_pred, y)}')
 # %%
