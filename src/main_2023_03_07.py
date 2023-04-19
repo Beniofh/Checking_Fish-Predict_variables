@@ -26,9 +26,9 @@ df_clean = pd.read_csv('../data/Fish-refined_clean_subset.csv', sep=',', low_mem
 df = df_clean[['subset']].join(df_value, how='left')
 # %% Feature selection. The features that will be used by the model
 quantitative_col = [
-    'bathymetry_band_0_mean_9x9',
+    'bathymetry_band_0_central_value',
     'bathymetry_band_0_sd',
-    'bathy_95m_band_0_mean_15x15',
+    'bathy_95m_band_0_central_value',
     'bathy_95m_band_0_sd',
     'chlorophyll_concentration_1km_band_0_mean_15x15',
     'chlorophyll_concentration_1km_band_0_sd',
