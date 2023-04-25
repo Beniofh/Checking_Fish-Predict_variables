@@ -19,6 +19,8 @@ df_features = pd.read_csv('../data/Galaxy117-Sort_on_data_82_n_vec_value.csv') \
 df = df_ab[['SurveyID', 'species_abundance_vec']].set_index('SurveyID') \
                                                  .merge(df_features, how='left', on='SurveyID')
 
+df['ts'] = pd.to_datetime(df.SurveyDate).values.astype(np.int64)// 10**9
+
 # %% constructing abondance vector
 
 df_test = df[df.subset == 'val']
@@ -34,7 +36,7 @@ print(y_train.shape)
 def to_log(abondance):
     abondance = abondance.copy()
     abondance[abondance == 0] = -float('inf')
-    abondance[abondance != -float('inf')] = np.log(abondance[abondance != -float('inf')])
+    abondance[abondance != -float('inf')] = np.log10(abondance[abondance != -float('inf')])
     abondance[abondance < -1] = -1
     return abondance
 
@@ -42,7 +44,7 @@ y_test_log = to_log(y_test)
 y_train_log = to_log(y_train)
 
 # %% construct_X
-feature_names = list(df_train.columns[11:]) + ['SiteLat', 'SiteLong']
+feature_names = list(df_train.columns[11:]) + ['SiteLat', 'SiteLong', 'ts']
 X_train = df_train[feature_names].to_numpy()
 X_test = df_test[feature_names].to_numpy()
 
@@ -73,42 +75,78 @@ def metric_challenge(y, y_hat, reduce=True):
 
 # %%
 
+def fine_tune_on_test(base, param_combination, X_tr, y_tr, X_te, y_te):
+    scores = []
+    best_params = {}
+    for sp in range(y_test.shape[1]):
+        y_sel = None
+        best_score = None
+        best_params[sp] = {}
+        for params in param_combination:
+            clf = base(**params)
+            clf.fit(X_tr[:, sel_mask], y_tr[:, sp])
+            y_log_pred = clf.predict(X_te[:, sel_mask])
+            s = metric_challenge(y_log_pred, y_te[:, sp], reduce=False)
 
-scores = []
-for sp in range(y_test_log.shape[1]):
-    y_sel = None
-    best_score = None
-    for k in range(1, 15):
-        clf = KNeighborsRegressor(n_neighbors=k)
-        clf.fit(X_train[:, sel_mask], y_train_log[:, sp])
-        y_log_pred = clf.predict(X_test[:, sel_mask])
-        s = metric_challenge(y_log_pred, y_test_log[:, sp], reduce=False)
-        print(f'Current score : {s.mean()}')
-        if y_sel is None or best_score > s.mean():
-            print('New best score')
-            best_score = s.mean()
-            y_sel = s
-    scores.append(y_sel)
-    print('*' * 30)
-scores = np.stack(scores, axis=1)
-print(f'Total score: {scores.mean(axis=1).mean()}')
+            if y_sel is None or best_score > s.mean():
+
+                best_score = s.mean()
+                best_params[sp] = params
+                y_sel = s
+        scores.append(y_sel)
+    scores = np.stack(scores, axis=1)
+    print(f'Total score: {scores.mean(axis=1).mean()}')
+    return best_params
 
 # %%
 print(f'Number of sites: {np.unique(X_test[:, sel_mask], axis=0).shape[0]}')
 print(f'Original dimensions: {X_test.shape}')
+
+# %% testing  KNN Regressor
+print('\nKNN\n')
+print('*' * 10, 'Test on test', '*' * 10)
+fine_tune_on_test(KNeighborsRegressor,
+                  [{'n_neighbors': k} for k in range(1, 15)],
+                  X_test,
+                  y_test_log,
+                  X_test,
+                  y_test_log)
+
+print('*' * 10, 'Train on test', '*' * 10)
+fine_tune_on_test(KNeighborsRegressor,
+                  [{'n_neighbors': k} for k in range(1, 15)],
+                  X_train,
+                  y_train_log,
+                  X_test,
+                  y_test_log)
+
 # %%
-clf = RandomForestRegressor(max_depth=10, random_state=0, criterion="squared_error") 
-clf.fit(X_test[:, sel_mask], y_test_log)
-y_pred = clf.predict(X_test[:, sel_mask])
-s = metric_challenge(y_pred, y_test_log)
-print(f'Random forest score test on test: {s}')
+print('\nRandom Forest\n')
+p = [{
+    'max_depth': i,
+    'random_state': 0,
+    'criterion': 'squared_error'
+} for i in range(8, 11, 2)]
+
+print('*' * 10, 'Test on test', '*' * 10)
+
+fine_tune_on_test(RandomForestRegressor,
+                  p,
+                  X_test,
+                  y_test_log,
+                  X_test,
+                  y_test_log)
+
+# print('*' * 10, 'Train on test', '*' * 10)
+
+# bp = fine_tune_on_test(RandomForestRegressor,
+#                        p,
+#                        X_train,
+#                        y_train_log,
+#                        X_test,
+#                        y_test_log)
+
 
 # %% select one site at two moments
 df_temp = df[df.SurveyID.isin([912354162, 912354174])]
-# %%
-clf = RandomForestRegressor(max_depth=2, random_state=0, criterion="squared_error") 
-clf.fit(X_train[:, sel_mask], y_train_log)
-y_pred = clf.predict(X_test[:, sel_mask])
-s = metric_challenge(y_pred, y_test_log)
-print(f'Random forest score train on test: {s}')
 # %%

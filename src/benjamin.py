@@ -24,7 +24,7 @@ path_dir = "../data"
 data = "Galaxy117-Sort_on_data_82_log(n+1)_vec_all"
 
 path_dir_2 = "../data/"
-data_2 = "2023-04-21_16-04-56"
+data_2 = "2023-04-17_15-32-35"
 
 path_dir_3 = "../data/"
 data_3 = "Galaxy117-Sort_on_data_82_n_vec_value"
