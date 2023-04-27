@@ -42,7 +42,7 @@ df_subset = df[df.SiteCode.isin(sites)]
 
 sns.set_theme()
 
-species='sp_93'
+species='sp_8'
 
 plt.figure()
 sns.lineplot(data=df_subset[(df_subset[species]>0)], x='ts',
