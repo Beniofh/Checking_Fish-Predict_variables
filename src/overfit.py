@@ -202,7 +202,11 @@ gb = df.groupby(['year', 'month_str'])[['month_str']]\
        .mean()
 print(gb)
 # %%
-df_train = df[df.subset == 'train'][['species_abundance_vec', 'SiteCode', 'Country', 'Ecoregion', 'month']]
+df_train = df[df.subset == 'train'][['species_abundance_vec',
+                                     'SiteCode',
+                                     'Country',
+                                     'Ecoregion',
+                                     'month']]
 
 abundances = []
 
@@ -224,5 +228,5 @@ for row in df[df.subset == 'val'].iterrows():
     y_pred.append(abundances[crit].mean(axis=0))
 y_pred = np.array(y_pred)
 y_pred_log = to_log(y_pred)
-metric_challenge(y_test_log, y_pred_log)
+print(metric_challenge(y_test_log, y_pred_log))
 # %%
