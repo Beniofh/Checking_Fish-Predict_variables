@@ -16,7 +16,7 @@ def MetricChallangeIABiodiv(y_test_pred, y_test_true):
         S=sum(abs(np.log10(y_test_pred_copie[site])-np.log10(y_test_true_copie[site])))/y_test_true_copie.shape[1]
         sum_S += S
     mean_S = sum_S/y_test_true_copie.shape[0]
-    return mean_S    
+    return mean_S
 
 
 # Chemin 
@@ -118,6 +118,120 @@ df_var.iloc[:, 209].name
 train_set_index = df_var.index[df_var.subset=='train']
 val_set_index = df_var.index[df_var.subset=='val']
 
+
+species_list = pd.read_csv(
+    '../data/T1_taxon_longitude_latitude_profondeur_date.tsv',
+    sep='\t',
+    header=None
+)
+
+species_99 = pd.DataFrame({
+    'name': [
+        'Anthias anthias',
+        'Apogon imberbis',
+        'Atherina boyeri',
+        'Atherina hepsetus',
+        'Atherina presbyter',
+        'Auxis rochei rochei',
+        'Balistes capriscus',
+        'Belone belone',
+        'Boops boops',
+        'Canthidermis sufflamen',
+        'Centrolabrus exoletus',
+        'Chelon auratus',
+        'Chelon labrosus',
+        'Chromis chromis',
+        'Chrysophrys auratus',
+        'Coris julis',
+        'Ctenolabrus rupestris',
+        'Dentex dentex',
+        'Dicentrarchus labrax',
+        'Dicentrarchus punctatus',
+        'Diplodus annularis',
+        'Diplodus cervinus',
+        'Diplodus puntazzo',
+        'Diplodus sargus',
+        'Diplodus vulgaris',
+        'Engraulis encrasicolus',
+        'Epinephelus costae',
+        'Epinephelus marginatus',
+        'Gobius bucchichi',
+        'Gobius cruentatus',
+        'Gobius fallax',
+        'Gobius geniporus',
+        'Gobius xanthocephalus',
+        'Labrus bergylta',
+        'Labrus merula',
+        'Labrus mixtus',
+        'Labrus viridis',
+        'Lithognathus mormyrus',
+        'Liza ramada',
+        'Mugil cephalus',
+        'Mullus surmuletus',
+        'Muraena helena',
+        'Mycteroperca fusca',
+        'Oblada melanura',
+        'Octopus vulgaris',
+        'Ophioblennius atlanticus',
+        'Pagellus acarne',
+        'Pagellus erythrinus',
+        'Pagrus auriga',
+        'Pagrus pagrus',
+        'Parablennius gattorugine',
+        'Parablennius incognitus',
+        'Parablennius pilicornis',
+        'Parablennius rouxi',
+        'Parablennius sanguinolentus',
+        'Parablennius zvonimiri',
+        'Parapristipoma octolineatum',
+        'Pempheris vanicolensis',
+        'Phycis phycis',
+        'Plectorhinchus mediterraneus',
+        'Plotosus lineatus',
+        'Pomadasys incisus',
+        'Sargocentron rubrum',
+        'Sarpa salpa',
+        'Sciaena umbra',
+        'Scorpaena maderensis',
+        'Scorpaena notata',
+        'Scorpaena porcus',
+        'Scorpaena scrofa',
+        'Sepia officinalis',
+        'Seriola dumerili',
+        'Serranus atricauda',
+        'Serranus cabrilla',
+        'Serranus hepatus',
+        'Serranus scriba',
+        'Siganus luridus',
+        'Siganus rivulatus',
+        'Sparisoma cretense',
+        'Sphyraena viridensis',
+        'Spicara maena',
+        'Spicara smaris',
+        'Spondyliosoma cantharus',
+        'Symphodus cinereus',
+        'Symphodus doderleini',
+        'Symphodus mediterraneus',
+        'Symphodus melanocercus',
+        'Symphodus melops',
+        'Symphodus ocellatus',
+        'Symphodus roissali',
+        'Symphodus rostratus',
+        'Symphodus tinca',
+        'Syngnathus abaster',
+        'Synodus saurus',
+        'Thalassoma pavo',
+        'Trachinus draco',
+        'Trachurus mediterraneus',
+        'Tripterygion delaisi',
+        'Tripterygion melanurus',
+        'Tripterygion tripteronotus']
+})
+
+species_list = species_list[0].unique()
+
+species_to_select = species_99.name.isin(species_list)
+
 # nom de la collone du vecteur d'espèce
 name_col_sp = df.columns[-1]
 
@@ -156,6 +270,9 @@ regr.fit(X, y)
 
 ### Résultats
 y_test_pred=regr.predict(X_test)
+
+y_test_pred = y_test_pred[:, species_to_select]
+y_test_true = y_test_true[:, species_to_select]
 
 
 MAE = round(np.mean(mean_absolute_error(y_test_true, y_test_pred,multioutput="raw_values")),score_decimal)

@@ -18,8 +18,125 @@ df_ab = pd.read_csv('../data/Galaxy117-Sort_on_data_82_n_vec_all.csv')
 df_features = pd.read_csv('../data/Galaxy117-Sort_on_data_82_n_vec_value.csv') \
                 .drop('species_abundance_vec', axis=1)
 
-df = df_ab[['SurveyID', 'species_abundance_vec']].set_index('SurveyID') \
-                                                 .merge(df_features, how='left', on='SurveyID')
+df = df_ab[
+    [
+        'SurveyID',
+        'species_abundance_vec'
+    ]
+].set_index('SurveyID').merge(df_features, how='left', on='SurveyID')
+
+species_list = pd.read_csv(
+    '../data/T1_taxon_longitude_latitude_profondeur_date.tsv',
+    sep='\t',
+    header=None
+)
+
+species_99 = pd.DataFrame({
+    'name': [
+        'Anthias anthias',
+        'Apogon imberbis',
+        'Atherina boyeri',
+        'Atherina hepsetus',
+        'Atherina presbyter',
+        'Auxis rochei rochei',
+        'Balistes capriscus',
+        'Belone belone',
+        'Boops boops',
+        'Canthidermis sufflamen',
+        'Centrolabrus exoletus',
+        'Chelon auratus',
+        'Chelon labrosus',
+        'Chromis chromis',
+        'Chrysophrys auratus',
+        'Coris julis',
+        'Ctenolabrus rupestris',
+        'Dentex dentex',
+        'Dicentrarchus labrax',
+        'Dicentrarchus punctatus',
+        'Diplodus annularis',
+        'Diplodus cervinus',
+        'Diplodus puntazzo',
+        'Diplodus sargus',
+        'Diplodus vulgaris',
+        'Engraulis encrasicolus',
+        'Epinephelus costae',
+        'Epinephelus marginatus',
+        'Gobius bucchichi',
+        'Gobius cruentatus',
+        'Gobius fallax',
+        'Gobius geniporus',
+        'Gobius xanthocephalus',
+        'Labrus bergylta',
+        'Labrus merula',
+        'Labrus mixtus',
+        'Labrus viridis',
+        'Lithognathus mormyrus',
+        'Liza ramada',
+        'Mugil cephalus',
+        'Mullus surmuletus',
+        'Muraena helena',
+        'Mycteroperca fusca',
+        'Oblada melanura',
+        'Octopus vulgaris',
+        'Ophioblennius atlanticus',
+        'Pagellus acarne',
+        'Pagellus erythrinus',
+        'Pagrus auriga',
+        'Pagrus pagrus',
+        'Parablennius gattorugine',
+        'Parablennius incognitus',
+        'Parablennius pilicornis',
+        'Parablennius rouxi',
+        'Parablennius sanguinolentus',
+        'Parablennius zvonimiri',
+        'Parapristipoma octolineatum',
+        'Pempheris vanicolensis',
+        'Phycis phycis',
+        'Plectorhinchus mediterraneus',
+        'Plotosus lineatus',
+        'Pomadasys incisus',
+        'Sargocentron rubrum',
+        'Sarpa salpa',
+        'Sciaena umbra',
+        'Scorpaena maderensis',
+        'Scorpaena notata',
+        'Scorpaena porcus',
+        'Scorpaena scrofa',
+        'Sepia officinalis',
+        'Seriola dumerili',
+        'Serranus atricauda',
+        'Serranus cabrilla',
+        'Serranus hepatus',
+        'Serranus scriba',
+        'Siganus luridus',
+        'Siganus rivulatus',
+        'Sparisoma cretense',
+        'Sphyraena viridensis',
+        'Spicara maena',
+        'Spicara smaris',
+        'Spondyliosoma cantharus',
+        'Symphodus cinereus',
+        'Symphodus doderleini',
+        'Symphodus mediterraneus',
+        'Symphodus melanocercus',
+        'Symphodus melops',
+        'Symphodus ocellatus',
+        'Symphodus roissali',
+        'Symphodus rostratus',
+        'Symphodus tinca',
+        'Syngnathus abaster',
+        'Synodus saurus',
+        'Thalassoma pavo',
+        'Trachinus draco',
+        'Trachurus mediterraneus',
+        'Tripterygion delaisi',
+        'Tripterygion melanurus',
+        'Tripterygion tripteronotus']
+})
+
+species_list = species_list[0].unique()
+
+species_to_select = species_99.name.isin(species_list)
 
 df['ts'] = pd.to_datetime(df.SurveyDate).values.astype(np.int64)// 10**9
 
@@ -37,6 +154,9 @@ y_train = [ast.literal_eval(r[1]['species_abundance_vec']) for r in df_train.ite
 y_train = np.array(y_train).astype(float)
 print(y_train.shape)
 
+y_test = y_test[:, species_to_select]
+y_train = y_train[:, species_to_select]
+
 # %% consider "log abondance"
 def to_log(abondance):
     abondance = abondance.copy()
@@ -49,7 +169,9 @@ y_test_log = to_log(y_test)
 y_train_log = to_log(y_train)
 
 # %% construct_X
-feature_names = list(df_train.columns[11:]) + ['SiteLat', 'SiteLong', 'ts', 'month']
+feature_names = list(df_train.columns[11:]) + ['SiteLat',
+        'SiteLong',
+        'ts']
 X_train = df_train[feature_names].to_numpy().astype(float)
 X_test = df_test[feature_names].to_numpy().astype(np.float32)
 
@@ -78,9 +200,21 @@ def metric_challenge(y, y_hat, reduce=True):
         return np.abs(y_hat-y)
 
 
+# %% On prédit 1 ou 0
+print(f'On prédit 1 ou 0 : {metric_challenge(y_test_log, y_test_log*0)}')
+
+# %% prédicteur constant
+
+y_const = y_train
+y_const_log = (np.log10(y_const+1)).mean(axis=0).reshape((1, 99))
+y_const_log=np.log10(np.exp(y_const_log)-1)
+y_const_log_pred = np.repeat(y_const_log, y_test_log.shape[0], axis=0)
+print(f'On prédit constant moyenne : {metric_challenge(y_test_log, y_const_log_pred)}')
+
+
 # %%
 
-def fine_tune_on_test(base, param_combination, X_tr, y_tr, X_te, y_te):
+def fit(base_estimator, param_combination, X_tr, y_tr, X_te, y_te):
     scores = []
     best_params = {}
     for sp in range(y_test.shape[1]):
@@ -88,7 +222,7 @@ def fine_tune_on_test(base, param_combination, X_tr, y_tr, X_te, y_te):
         best_score = None
         best_params[sp] = {}
         for params in param_combination:
-            clf = base(**params)
+            clf = base_estimator(**params)
             clf.fit(X_tr[:, sel_mask], y_tr[:, sp])
             y_log_pred = clf.predict(X_te[:, sel_mask])
             s = metric_challenge(y_log_pred, y_te[:, sp], reduce=False)
@@ -109,16 +243,18 @@ print(f'Original dimensions: {X_test.shape}')
 
 # %% testing  KNN Regressor
 print('\nKNN\n')
-print('*' * 10, 'Test on test', '*' * 10)
-fine_tune_on_test(KNeighborsRegressor,
+print('*' * 10, 'Test on test',
+        '*' * 10)
+fit(KNeighborsRegressor,
                   [{'n_neighbors': k} for k in range(1, 15)],
                   X_test,
                   y_test_log,
                   X_test,
                   y_test_log)
 
-print('*' * 10, 'Train on test', '*' * 10)
-p = fine_tune_on_test(KNeighborsRegressor,
+print('*' * 10, 'Train on test',
+        '*' * 10)
+p = fit(KNeighborsRegressor,
                       [{'n_neighbors': k} for k in range(1, 15)],
                       X_train,
                       y_train_log,
@@ -134,30 +270,33 @@ p = [{
     'criterion': 'squared_error'
 } for i in range(8, 11, 2)]
 
-print('*' * 10, 'Test on test', '*' * 10)
+print('*' * 10, 'Test on test',
+        '*' * 10)
 
-fine_tune_on_test(RandomForestRegressor,
+fit(RandomForestRegressor,
                   p,
                   X_test,
                   y_test_log,
                   X_test,
                   y_test_log)
 
-# print('*' * 10, 'Train on test', '*' * 10)
+print('*' * 10, 'Train on test',
+        '*' * 10)
 
-# bp = fine_tune_on_test(RandomForestRegressor,
-#                        p,
-#                        X_train,
-#                        y_train_log,
-#                        X_test,
-#                        y_test_log)
+bp = fit(RandomForestRegressor,
+                       p,
+                       X_train,
+                       y_train_log,
+                       X_test,
+                       y_test_log)
 
 
 # %% select one site at two moments
 df_temp = df[df.SurveyID.isin([912354162, 912354174])]
 # %% Train only a KNN with k=3
-print('*' * 10, 'Train on test (k=3)', '*' * 10)
-p = fine_tune_on_test(KNeighborsRegressor,
+print('*' * 10, 'Train on test (k=3)',
+        '*' * 10)
+p = fit(KNeighborsRegressor,
                       [{'n_neighbors': 3}],
                       X_train,
                       y_train_log,
@@ -173,8 +312,9 @@ sel_mask = (1-mask).astype(bool)
 print(f'Available variables: {(sel_mask).sum()}')
 print(f'Not available variables: {mask.sum()}')
 
-print('*' * 10, 'Train on test (with ts only)', '*' * 10)
-p = fine_tune_on_test(KNeighborsRegressor,
+print('*' * 10, 'Train on test (with ts only)',
+        '*' * 10)
+p = fit(KNeighborsRegressor,
                       [{'n_neighbors': 50}],
                       X_train,
                       y_train_log,
@@ -182,8 +322,9 @@ p = fine_tune_on_test(KNeighborsRegressor,
                       y_test_log)
 
 # %%
-print('*' * 10, 'Train on test', '*' * 10)
-p = fine_tune_on_test(KNeighborsRegressor,
+print('*' * 10, 'Train on test',
+        '*' * 10)
+p = fit(KNeighborsRegressor,
                       [{'n_neighbors': k} for k in range(1, 100, 5)],
                       X_train,
                       y_train_log,
@@ -195,7 +336,8 @@ df['year'] = df.date.dt.year
 df['month_str'] = df.month.apply(lambda m: calendar.month_abbr[m])
 
 df.sort_values('month', inplace=True)
-gb = df.groupby(['year', 'month_str'])[['month_str']]\
+gb = df.groupby(['year',
+        'month_str'])[['month_str']]\
        .count()\
        .rename({'month_str': 'count'}, axis=1)\
        .groupby('month_str')\
